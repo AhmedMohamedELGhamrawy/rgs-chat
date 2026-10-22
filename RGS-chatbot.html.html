@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مساعد RGS Solar الذكي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Cairo', sans-serif; }
+        .chat-container { height: calc(100vh - 140px); }
+    </style>
+</head>
+<body class="bg-slate-50 flex flex-col h-screen overflow-hidden">
+
+    <!-- الهيدر -->
+    <header class="bg-slate-900 text-white shadow-md py-3 px-4 flex justify-between items-center z-10">
+        <div class="flex items-center space-x-3 space-x-reverse">
+            <div class="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center font-bold text-lg text-slate-900 shadow">RGS</div>
+            <div>
+                <h1 class="font-bold text-base leading-tight">RGS Solar</h1>
+                <span class="text-xs text-emerald-400 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> متصل الآن
+                </span>
+            </div>
+        </div>
+        <div>
+            <button id="openModalBtn" class="text-xs bg-slate-800 hover:bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-700 transition">
+                إعدادات الرابط ⚙️
+            </button>
+        </div>
+    </header>
+
+    <!-- محتوى الشات -->
+    <main id="chatBox" class="chat-container flex-1 overflow-y-auto p-4 space-y-4 max-w-3xl w-full mx-auto">
+        <div class="flex items-start space-x-2 space-x-reverse">
+            <div class="w-8 h-8 rounded-full bg-amber-500 flex-shrink-0 flex items-center justify-center text-xs font-bold text-slate-900">RGS</div>
+            <div class="bg-white text-slate-800 p-3.5 rounded-2xl shadow-sm border border-slate-100 max-w-[80%] text-sm leading-relaxed">
+                أهلاً بك! أنا المساعد الذكي لشركة <b>RGS Solar</b>. كيف يمكنني مساعدتك اليوم؟
+            </div>
+        </div>
+    </main>
+
+    <!-- شريط الإدخال -->
+    <footer class="bg-white border-t border-slate-200 p-3 shadow-lg">
+        <form id="chatForm" class="max-w-3xl mx-auto flex gap-2">
+            <input type="text" id="userInput" placeholder="اكتب رسالتك هنا..." autocomplete="off"
+                class="flex-1 bg-slate-100 border border-slate-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 transition">
+            <button type="submit" id="sendBtn" class="bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold px-6 py-3 rounded-xl transition flex items-center justify-center shadow">
+                إرسال
+            </button>
+        </form>
+    </footer>
+
+    <!-- نافذة الإعدادات المنبثقة (Modal) -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl space-y-4">
+            <h3 class="text-lg font-bold text-slate-900">إعدادات رابط الـ Webhook</h3>
+            <p class="text-xs text-slate-500">حط هنا رابط الـ Production Webhook المأخوذ من عقدة الـ Webhook في n8n:</p>
+            <input type="text" id="webhookInput" placeholder="https://your-n8n-domain.com/webhook/rgs-chat"
+                class="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm text-left dir-ltr focus:ring-2 focus:ring-amber-500 outline-none">
+            <div class="flex justify-end gap-2 pt-2">
+                <button type="button" id="closeModalBtn" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-lg transition">إلغاء</button>
+                <button type="button" id="saveModalBtn" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-slate-900 text-xs font-bold rounded-lg transition">حفظ الرابط</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- السكريبت المحدث -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            let N8N_WEBHOOK_URL = localStorage.getItem('rgs_webhook_url') || 'https://YOUR_N8N_DOMAIN/webhook/rgs-chat';
+            
+            let sessionId = localStorage.getItem('rgs_session_id');
+            if (!sessionId) {
+                sessionId = 'user_' + Math.random().toString(36).substring(2, 9);
+                localStorage.setItem('rgs_session_id', sessionId);
+            }
+
+            // العناصر
+            const modal = document.getElementById('settingsModal');
+            const openModalBtn = document.getElementById('openModalBtn');
+            const closeModalBtn = document.getElementById('closeModalBtn');
+            const saveModalBtn = document.getElementById('saveModalBtn');
+            const webhookInput = document.getElementById('webhookInput');
+            const chatForm = document.getElementById('chatForm');
+
+            // التحكم في النافذة المنبثقة
+            openModalBtn.addEventListener('click', () => {
+                webhookInput.value = N8N_WEBHOOK_URL;
+                modal.classList.remove('hidden');
+            });
+
+            closeModalBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+            });
+
+            saveModalBtn.addEventListener('click', () => {
+                const newUrl = webhookInput.value.trim();
+                if (newUrl) {
+                    N8N_WEBHOOK_URL = newUrl;
+                    localStorage.setItem('rgs_webhook_url', newUrl);
+                    modal.classList.add('hidden');
+                    alert("تم حفظ الرابط بنجاح!");
+                }
+            });
+
+            // إرسال الرسالة
+            chatForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const inputField = document.getElementById('userInput');
+                const message = inputField.value.trim();
+                if (!message) return;
+
+                appendMessage(message, 'user');
+                inputField.value = '';
+
+                const loadingId = showLoadingIndicator();
+
+                try {
+                    const response = await fetch(N8N_WEBHOOK_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ message: message, sessionId: sessionId })
+                    });
+
+                    if (!response.ok) throw new Error('فشل الاتصال بالخادم');
+                    
+                    const data = await response.json();
+                    removeLoadingIndicator(loadingId);
+                    
+                    appendMessage(data.reply || "عذراً، لم أتمكن من معالجة الرد.", 'bot');
+
+                } catch (error) {
+                    removeLoadingIndicator(loadingId);
+                    appendMessage("حدث خطأ في الاتصال بالـ Webhook. اضغط على 'إعدادات الرابط' وتأكد من الرابط أو تأكد من تفعيل الـ Workflow في n8n.", 'bot');
+                    console.error(error);
+                }
+            });
+
+            function appendMessage(text, sender) {
+                const chatBox = document.getElementById('chatBox');
+                const isUser = sender === 'user';
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `flex items-start space-x-2 space-x-reverse ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+                
+                messageDiv.innerHTML = `
+                    <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-bold ${isUser ? 'bg-slate-800 text-white' : 'bg-amber-500 text-slate-900'}">
+                        ${isUser ? 'أنت' : 'RGS'}
+                    </div>
+                    <div class="${isUser ? 'bg-slate-900 text-white' : 'bg-white text-slate-800 border border-slate-100'} p-3.5 rounded-2xl shadow-sm max-w-[80%] text-sm leading-relaxed whitespace-pre-wrap">
+                        ${escapeHtml(text)}
+                    </div>
+                `;
+                chatBox.appendChild(messageDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            }
+
+            function showLoadingIndicator() {
+                const chatBox = document.getElementById('chatBox');
+                const id = 'loading_' + Date.now();
+                const div = document.createElement('div');
+                div.id = id;
+                div.className = "flex items-start space-x-2 space-x-reverse";
+                div.innerHTML = `
+                    <div class="w-8 h-8 rounded-full bg-amber-500 flex-shrink-0 flex items-center justify-center text-xs font-bold text-slate-900">RGS</div>
+                    <div class="bg-white text-slate-500 p-3 rounded-2xl shadow-sm border border-slate-100 text-sm flex items-center gap-1">
+                        <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></span>
+                        <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                        <span class="w-2 h-2 bg-slate-400 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                    </div>
+                `;
+                chatBox.appendChild(div);
+                chatBox.scrollTop = chatBox.scrollHeight;
+                return id;
+            }
+
+            function removeLoadingIndicator(id) {
+                const el = document.getElementById(id);
+                if (el) el.remove();
+            }
+
+            function escapeHtml(text) {
+                return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            }
+        });
+    </script>
+</body>
+</html>
