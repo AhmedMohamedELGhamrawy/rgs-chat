@@ -67,14 +67,18 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const DEFAULT_WEBHOOK_URL = 'https://n8n.srv1165413.hstgr.cloud/webhook/rgs-chat';
+            // رابط Production الثابت والرئيسي
+            const PRODUCTION_WEBHOOK_URL = 'https://n8n.srv1165413.hstgr.cloud/webhook/rgs-chat';
             
-            // تحديث وتثبيت الرابط الافتراضي للـ Webhook
-            let N8N_WEBHOOK_URL = localStorage.getItem('rgs_webhook_url');
-            if (!N8N_WEBHOOK_URL || N8N_WEBHOOK_URL.includes('YOUR_N8N_DOMAIN')) {
-                N8N_WEBHOOK_URL = DEFAULT_WEBHOOK_URL;
-                localStorage.setItem('rgs_webhook_url', DEFAULT_WEBHOOK_URL);
+            let storedUrl = localStorage.getItem('rgs_webhook_url');
+            
+            // فحص إجباري: لو الرابط غير موجود أو كان يحتوي على كلمة test أو رابط افتراضي قديم -> يتم تعديله فوراً إلى Production
+            if (!storedUrl || storedUrl.includes('webhook-test') || storedUrl.includes('YOUR_N8N_DOMAIN')) {
+                localStorage.setItem('rgs_webhook_url', PRODUCTION_WEBHOOK_URL);
+                storedUrl = PRODUCTION_WEBHOOK_URL;
             }
+
+            let N8N_WEBHOOK_URL = storedUrl;
             
             let sessionId = localStorage.getItem('rgs_session_id');
             if (!sessionId) {
